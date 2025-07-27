@@ -25,13 +25,14 @@ from pvlib.iotools import get_pvgis_tmy
 import pvdata as pv
 from datetime import datetime
 
-
+def val(expr): 
+    return float(expr.getValue()) if hasattr(expr, "getValue") else float(expr)
 
 # -----------------------------
 # Configuration
 # -----------------------------
 # Time horizon
-days = 5
+days = 365
 hours_per_day = 24
 T = days * hours_per_day
 h = range(T)
@@ -46,8 +47,8 @@ D = 1.0  # hours
 #---------------------
 # PV data
 lat, lon = 43.3026, 5.3691 # for Marseille
-start = datetime(2023, 1, 5, 5) # format YYYY, MM, DD, hh
-end   = datetime(2023, 1, 4+days, 5)
+start = datetime(2022, 1, 1, 5) # format YYYY, MM, DD, hh
+end   = datetime(2022, 12, 31, 5)
 area = 2000000 # in m^2
 data = pv.fetch_data(lat, lon, start, end,
                 email='saifiitp16@gmail.com',
@@ -70,8 +71,8 @@ HOURLY_OPEX_POWER  = OPEX_POWER_EUR_PER_MW_PER_YEAR   / (365 * 24)
 
 # Physical bounds
 E_MIN_FIXED = 20.0   # MWh safety buffer
-E_CAP_MAX   = 300.0  # MWh
-P_CAP_MAX   = 80.0   # MW
+E_CAP_MAX   = 3000.0  # MWh
+P_CAP_MAX   = 1000.0   # MW
 C_RATE_MAX  = 1.0    # max C-rate: P_cap ≤ C_RATE_MAX * E_cap
 
 # Efficiencies
@@ -256,6 +257,21 @@ if model.status == GRB.OPTIMAL:
     print(f"  Grid export : {tot_export:10.1f}")
     print(f"  Slack       : {tot_slack:10.1f}  (limit {allowed_slk:.1f}, "
           f"{100*tot_slack/allowed_slk:.1f}% used)")
+    print("\n--- Objective breakdown (€/year) ---")
+    print(f"Capacity revenue   : {val(cap_rev):,.0f}")
+    print(f"Energy value (exp-imp): {val(energy_val):,.0f}")
+    print(f"Curtailment cost   : {val(curt_cost):,.0f}")
+    print(f"Slack cost         : {val(slack_cost):,.0f}")
+    print(f"Degradation cost   : {val(deg_cost):,.0f}")
+    print(f"Terminal SOC cost  : {val(term_cost):,.0f}")
+    print(f"CAPEX cost         : {val(capex_cost):,.0f}")
+    print(f"OPEX cost          : {val(opex_cost):,.0f}")
+    print(f"Total objective    : {model.objVal:,.0f}")
+    print(f"E_cap={E_cap.X:.2f} MWh, P_cap={P_cap.X:.2f} MW")
+    print("Annual PV MWh:", np.sum(P_PV)*dt)
+    print("Annual load MWh:", np.sum(P_load)*dt)
+
+
 
 
 else:
